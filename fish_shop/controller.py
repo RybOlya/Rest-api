@@ -1,26 +1,35 @@
 from main import app, db
-from flask import request
-from flask import jsonify
-@app.route('/')
+from models import Fish, FishSchema
+from flask import request, jsonify
+from marshmallow.exceptions import ValidationError
 
+fish_schema = FishSchema()
+fishes_schema = FishSchema(many = True)
+
+@app.route('/')
 def index():
-    return "Hooray"
+    return "Whaaat uuuuuuuup?"
 
 @app.route('/fish/<id>')
-def get_fish():
-    print(id)
-    return "my fish is gorgeous"
+def get_fish(id):
+    fish = Fish.query.get(id)
+    if fish is None:
+        return{"errors": "No fish with id: {0} present".format(id)}, 404
+    response = fish_schema.dump(fish)
+    return jsonify(response)
 
-@app.route('/fish', methods =["GET"])
+@app.route('/fish', methods=['GET'])
 def get_all_fishes():
-    return "all fish"
+    response = fishes_schema.dump(Fish.query.all())
+    return jsonify(response)
 
-@app.route('/fish', methods =["POST"])
+@app.route('/fish', methods=['POST'])
 def create_fish():
-
-    fish = Fish( name = request.json["name"], origin = request.json["origin"])
+    try:
+        fish = Fish(**fish_schema.load(request.get_json()))
+    except ValidationError as err:
+        return {"errors": err.messages}, 422
     db.session.add(fish)
-
     db.session.commit()
-
-    return jsonify(Fish.query.all())
+    response = fish_schema.dump(fish)
+    return jsonify(response)
